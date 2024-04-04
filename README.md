@@ -1,2 +1,2 @@
-# blinky-maxi-cube
+# blinky-maxi-iter-01-cube
 

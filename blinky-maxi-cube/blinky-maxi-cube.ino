@@ -17,8 +17,8 @@ union CubeData
     int16_t valveCycleState;
     int16_t valveNumCycles;
     int16_t valveCycleInterval;  //seconds
-    int16_t valveCycleCount;
     int16_t valveState;
+    int16_t valveCycleCount;
     int16_t newData;
   };
   byte buffer[16];
@@ -72,7 +72,7 @@ void setup()
 void loop()
 {
   unsigned long nowTime = millis();
-  valveCycle42(nowTime);
+  valveCycle01(nowTime);
  
   if ((nowTime - lastPublishTime) > publishInterval)
   {
@@ -85,9 +85,9 @@ void loop()
   BlinkyEtherCube.loop();
 }
 
-void valveCycle42(unsigned long nowTime)
+void valveCycle01(unsigned long nowTime)
 {
-  if (cubeData.valveCycleState != 42) return;
+  if (cubeData.valveCycleState != 1) return;
   if ((nowTime - lastValveCycleTime) < valveCycleInterval) return;
   if (cubeData.valveState == 0)
   {
@@ -118,7 +118,7 @@ void handleNewSettingFromServer(uint8_t address)
       {
         case 0:
           break;
-        case 42:
+        case 1:
           cubeData.valveCycleCount = 0;
           break;
         default:
@@ -132,7 +132,7 @@ void handleNewSettingFromServer(uint8_t address)
       if (cubeData.valveCycleInterval < 1) cubeData.valveNumCycles = 1;
       valveCycleInterval = ((unsigned long) cubeData.valveCycleInterval) * 1000;
       break;                
-    case 6:
+    case 5:
       digitalWrite(CONTROLLINO_D0, cubeData.valveState); 
       lastValveCycleTime = millis();  
       cubeData.newData = 1;

@@ -19,8 +19,9 @@ union CubeData
     int16_t valveCycleInterval;  //seconds
     int16_t valveCycleCount;
     int16_t valveState;
+    int16_t newData;
   };
-  byte buffer[14];
+  byte buffer[16];
 };
 CubeData cubeData;
 byte mac[] = { 0x42, 0x4C, 0x30, 0x30, 0x30, 0x31 };
@@ -60,6 +61,7 @@ void setup()
   cubeData.valveCycleInterval = 30;
   valveCycleInterval = ((unsigned long) cubeData.valveCycleInterval) * 1000;
   cubeData.valveState = 0;
+  cubeData.newData = 0;
 
   pinMode(CONTROLLINO_D0, OUTPUT);    
   digitalWrite(CONTROLLINO_D0, cubeData.valveState);    
@@ -78,6 +80,7 @@ void loop()
     cubeData.watchdog = cubeData.watchdog + 1;
     if (cubeData.watchdog > 32760) cubeData.watchdog= 0 ;
     BlinkyEtherCube.publishToServer();
+    cubeData.newData = 0;
   }  
   BlinkyEtherCube.loop();
 }
@@ -97,8 +100,8 @@ void valveCycle42(unsigned long nowTime)
   digitalWrite(CONTROLLINO_D0, cubeData.valveState); 
   lastValveCycleTime = nowTime;  
   cubeData.valveCycleCount = cubeData.valveCycleCount + 1;
+  cubeData.newData = 1;
 // end cycling if we reach max cycle count
-// hi Dave!
   if (cubeData.valveCycleCount >= cubeData.valveNumCycles) cubeData.valveCycleState = 0;
 }
 
@@ -132,6 +135,7 @@ void handleNewSettingFromServer(uint8_t address)
     case 6:
       digitalWrite(CONTROLLINO_D0, cubeData.valveState); 
       lastValveCycleTime = millis();  
+      cubeData.newData = 1;
       break;                
     default:
       break;

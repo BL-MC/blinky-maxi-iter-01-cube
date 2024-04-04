@@ -98,6 +98,7 @@ void valveCycle42(unsigned long nowTime)
   lastValveCycleTime = nowTime;  
   cubeData.valveCycleCount = cubeData.valveCycleCount + 1;
 // end cycling if we reach max cycle count
+// hi Dave!
   if (cubeData.valveCycleCount >= cubeData.valveNumCycles) cubeData.valveCycleState = 0;
 }
 

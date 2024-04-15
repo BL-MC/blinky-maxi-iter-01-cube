@@ -101,6 +101,14 @@ void valveCycle01(unsigned long nowTime)
   lastValveCycleTime = nowTime;  
   cubeData.valveCycleCount = cubeData.valveCycleCount + 1;
   cubeData.newData = 1;
+  
+  lastPublishTime = nowTime;
+  cubeData.watchdog = cubeData.watchdog + 1;
+  if (cubeData.watchdog > 32760) cubeData.watchdog= 0 ;
+  BlinkyEtherCube.publishToServer();
+  BlinkyEtherCube.loop();
+  cubeData.newData = 0;
+  
 // end cycling if we reach max cycle count
   if (cubeData.valveCycleCount >= cubeData.valveNumCycles) cubeData.valveCycleState = 0;
 }

@@ -127,15 +127,17 @@ void loop()
   checkSwitch(0);
   checkSwitch(1);
   valveCycle01(nowTime);
-
-  if ((nowTime - lastPublishTime) > publishInterval)
+  if (cubeData.valveCycleState == 0)
   {
-    lastPublishTime = nowTime;
-    cubeData.watchdog = cubeData.watchdog + 1;
-    if (cubeData.watchdog > 32760) cubeData.watchdog= 0 ;
-    if(MQTT) BlinkyEtherCube.publishToServer();
-    cubeData.newData = 0;
-  }  
+    if ((nowTime - lastPublishTime) > publishInterval)
+    {
+      lastPublishTime = nowTime;
+      cubeData.watchdog = cubeData.watchdog + 1;
+      if (cubeData.watchdog > 32760) cubeData.watchdog= 0 ;
+      if(MQTT) BlinkyEtherCube.publishToServer();
+      cubeData.newData = 0;
+    }  
+  }
   if(MQTT) BlinkyEtherCube.loop();
 }
 
@@ -179,6 +181,8 @@ void handleNewSettingFromServer(uint8_t address)
 void valveCycle01(unsigned long nowTime)
 {
   if (cubeData.valveCycleState != 1) return;
+
+  
   if ((nowTime - lastValveCycleTime) < valveCycleInterval) return;
   if (cubeData.valveState == 0)
   {

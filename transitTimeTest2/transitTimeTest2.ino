@@ -1,7 +1,7 @@
 const boolean CHATTY_CATHY  = true;
 const boolean MQTT  = false;
 
-#define VALVE_CYCLE_STATE_INIT 0
+#define VALVE_CYCLE_STATE_INIT 1
 #define VALVE_NUM_CYCLES_INIT 5
 #define VALVE_CYCLE_INTERVAL_INIT 30
 #define BOUNCE_DELAY 50 
@@ -33,7 +33,7 @@ union CubeData
     int16_t timeToClose;   //mS
     int16_t newData;
   };
-  byte buffer[16];
+  byte buffer[24     ];
 };
 CubeData cubeData;
 byte mac[] = { 0x42, 0x4C, 0x30, 0x30, 0x30, 0x31 };
@@ -82,6 +82,7 @@ void setup()
     BlinkyEtherCube.setMqttTray(BOX,TRAY_TYPE,TRAY_NAME, HUB);
     BlinkyEtherCube.init(&cubeData);
   }
+  if (CHATTY_CATHY) Serial.println("Init cubeData");
 
   lastPublishTime = millis();
   cubeData.state = 1;
@@ -97,7 +98,9 @@ void setup()
   cubeData.timeToOpen = 0;   //mS
   cubeData.timeToClose = 0;   //mS
  
+  if (CHATTY_CATHY) Serial.println("Init valveOpenedSwitch");
   setupValveSwitch(&valveOpenedSwitch, CONTROLLINO_A1, CONTROLLINO_D1);
+  if (CHATTY_CATHY) Serial.println("Init valveClosedSwitch");
   setupValveSwitch(&valveClosedSwitch, CONTROLLINO_A2, CONTROLLINO_D2);
 
   cubeData.newData = 0;
@@ -106,13 +109,33 @@ void setup()
   digitalWrite(CONTROLLINO_D0, cubeData.valveState);    
   lastValveCycleTime = lastPublishTime;
 
+  if (cubeData.valveCycleState == 1)
+  {
+    if (CHATTY_CATHY) Serial.println("Start Cycling");
+    cubeData.valveCycleCount = 0;
+    startOpenTime = millis();
+    cubeData.valveState = 1;
+    if (CHATTY_CATHY) Serial.println("Open Valve");
+    digitalWrite(CONTROLLINO_D0, cubeData.valveState); 
+  }
+
 }
 
 void loop()
 {
   nowTime = millis();
   boolean newValveOpenedSwitchState = readSwitch(&valveOpenedSwitch);
+  if (newValveOpenedSwitchState)
+  {
+    if (CHATTY_CATHY) Serial.print("ValveOpenedSwitchState: ");
+    if (CHATTY_CATHY) Serial.println(valveOpenedSwitch.currentState);
+  }
   boolean newValveClosedSwitchState = readSwitch(&valveClosedSwitch);
+  if (newValveClosedSwitchState)
+  {
+    if (CHATTY_CATHY) Serial.print("ValveClosedSwitchState: ");
+    if (CHATTY_CATHY) Serial.println(valveClosedSwitch.currentState);
+  }
   cubeData.valveOpenedState = valveOpenedSwitch.currentState;
   cubeData.valveClosedState = valveClosedSwitch.currentState;
   if (cubeData.valveCycleState == 1)
@@ -122,11 +145,15 @@ void loop()
       if (newValveOpenedSwitchState && (valveOpenedSwitch.currentState == 1))
       {
         cubeData.timeToOpen = nowTime - startOpenTime;
-      }
+        if (CHATTY_CATHY) Serial.print("Open switch detected. Time to open: ");
+        if (CHATTY_CATHY) Serial.print(cubeData.timeToOpen);
+        if (CHATTY_CATHY) Serial.println(" ms");
+     }
       if ((nowTime - startOpenTime) >= cubeData.valveCycleInterval)
       {
         startCloseTime = nowTime;
         cubeData.valveState = 0;
+        if (CHATTY_CATHY) Serial.println("Close Valve");
         digitalWrite(CONTROLLINO_D0, cubeData.valveState); 
       }
     }
@@ -135,24 +162,35 @@ void loop()
       if (newValveClosedSwitchState && (valveClosedSwitch.currentState == 1))
       {
         cubeData.timeToClose = nowTime - startCloseTime;
+        if (CHATTY_CATHY) Serial.print("Close switch detected. Time to close: ");
+        if (CHATTY_CATHY) Serial.print(cubeData.timeToClose);
+        if (CHATTY_CATHY) Serial.println(" ms");
       }
       if ((nowTime - startCloseTime) >= cubeData.valveCycleInterval)
       {
         startOpenTime = nowTime;
         cubeData.valveState = 1;
+        if (CHATTY_CATHY) Serial.println("Open Valve");
         digitalWrite(CONTROLLINO_D0, cubeData.valveState); 
         cubeData.valveCycleCount = cubeData.valveCycleCount + 1;
+        if (CHATTY_CATHY) Serial.print("valveCycleCount: ");
+        if (CHATTY_CATHY) Serial.println(cubeData.valveCycleCount);
         cubeData.newData = 1;
         lastPublishTime = nowTime;
         cubeData.watchdog = cubeData.watchdog + 1;
         if (cubeData.watchdog > 32760) cubeData.watchdog= 0 ;
         if(MQTT)
         {
+          if (CHATTY_CATHY) Serial.println("Publish cycle data");
           BlinkyEtherCube.publishToServer();
           BlinkyEtherCube.loop();
         }
         cubeData.newData = 0;
-        if (cubeData.valveCycleCount >= cubeData.valveNumCycles) cubeData.valveCycleState = 0;
+        if (cubeData.valveCycleCount >= cubeData.valveNumCycles)
+        {
+          if (CHATTY_CATHY) Serial.println("Stop Cycling");
+          cubeData.valveCycleState = 0;
+        }
       }
     }
   }
@@ -160,6 +198,7 @@ void loop()
   {
     if ((nowTime - lastPublishTime) > publishInterval)
     {
+      if (CHATTY_CATHY) Serial.println("Publish idle data");
       cubeData.timeToOpen = 0;
       cubeData.timeToClose = 0;
       lastPublishTime = nowTime;
@@ -184,8 +223,10 @@ void handleNewSettingFromServer(uint8_t address)
       switch(cubeData.valveCycleState)
       {
         case 0:
+          if (CHATTY_CATHY) Serial.println("Cycling interrupted");
           break;
         case 1:
+          if (CHATTY_CATHY) Serial.println("Start Cycling");
           cubeData.valveCycleCount = 0;
           startOpenTime = nowTime;
           cubeData.valveState = 1;
@@ -196,13 +237,16 @@ void handleNewSettingFromServer(uint8_t address)
       }
       break;
     case 3:
+      if (CHATTY_CATHY) Serial.println("Number of cycles changed");
       if (cubeData.valveNumCycles < 0) cubeData.valveNumCycles = 0;
       break;                
     case 4:
+      if (CHATTY_CATHY) Serial.println("valveCycleInterval changed");
       if (cubeData.valveCycleInterval < 1) cubeData.valveNumCycles = 1;
       valveCycleInterval = ((unsigned long) cubeData.valveCycleInterval) * 1000;
       break;                
     case 5:
+      if (CHATTY_CATHY) Serial.println("Acting on valve directly");
       digitalWrite(CONTROLLINO_D0, cubeData.valveState); 
       lastValveCycleTime = millis();  
       cubeData.newData = 1;

@@ -33,7 +33,7 @@ union CubeData
     int16_t timeToClose;   //mS
     int16_t newData;
   };
-  byte buffer[24     ];
+  byte buffer[24];
 };
 CubeData cubeData;
 byte mac[] = { 0x42, 0x4C, 0x30, 0x30, 0x30, 0x31 };

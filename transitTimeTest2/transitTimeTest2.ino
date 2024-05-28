@@ -1,7 +1,7 @@
 const boolean CHATTY_CATHY  = true;
-const boolean MQTT  = false;
+const boolean MQTT  = true;
 
-#define VALVE_CYCLE_STATE_INIT 1
+#define VALVE_CYCLE_STATE_INIT 0
 #define VALVE_NUM_CYCLES_INIT 5
 #define VALVE_CYCLE_INTERVAL_INIT 30
 #define BOUNCE_DELAY 50 
@@ -148,13 +148,23 @@ void loop()
         if (CHATTY_CATHY) Serial.print("Open switch detected. Time to open: ");
         if (CHATTY_CATHY) Serial.print(cubeData.timeToOpen);
         if (CHATTY_CATHY) Serial.println(" ms");
-     }
-      if ((nowTime - startOpenTime) >= cubeData.valveCycleInterval)
+      }
+      if ((nowTime - startOpenTime) >= valveCycleInterval)
       {
         startCloseTime = nowTime;
         cubeData.valveState = 0;
         if (CHATTY_CATHY) Serial.println("Close Valve");
         digitalWrite(CONTROLLINO_D0, cubeData.valveState); 
+        cubeData.newData = 1;
+        lastPublishTime = nowTime;
+        cubeData.timeToClose = 0;
+        if(MQTT)
+        {
+          if (CHATTY_CATHY) Serial.println("Publish cycle data");
+          BlinkyEtherCube.publishToServer();
+          BlinkyEtherCube.loop();
+        }
+        cubeData.newData = 0;
       }
     }
     else
@@ -166,19 +176,20 @@ void loop()
         if (CHATTY_CATHY) Serial.print(cubeData.timeToClose);
         if (CHATTY_CATHY) Serial.println(" ms");
       }
-      if ((nowTime - startCloseTime) >= cubeData.valveCycleInterval)
+      if ((nowTime - startCloseTime) >= valveCycleInterval)
       {
         startOpenTime = nowTime;
-        cubeData.valveState = 1;
         if (CHATTY_CATHY) Serial.println("Open Valve");
-        digitalWrite(CONTROLLINO_D0, cubeData.valveState); 
-        cubeData.valveCycleCount = cubeData.valveCycleCount + 1;
-        if (CHATTY_CATHY) Serial.print("valveCycleCount: ");
-        if (CHATTY_CATHY) Serial.println(cubeData.valveCycleCount);
+        if (cubeData.valveCycleCount < (cubeData.valveNumCycles - 1) )
+        {
+          cubeData.valveState = 1;
+          digitalWrite(CONTROLLINO_D0, cubeData.valveState); 
+        }
         cubeData.newData = 1;
         lastPublishTime = nowTime;
         cubeData.watchdog = cubeData.watchdog + 1;
         if (cubeData.watchdog > 32760) cubeData.watchdog= 0 ;
+        cubeData.timeToOpen = 0;
         if(MQTT)
         {
           if (CHATTY_CATHY) Serial.println("Publish cycle data");
@@ -186,6 +197,9 @@ void loop()
           BlinkyEtherCube.loop();
         }
         cubeData.newData = 0;
+        cubeData.valveCycleCount = cubeData.valveCycleCount + 1;
+        if (CHATTY_CATHY) Serial.print("valveCycleCount: ");
+        if (CHATTY_CATHY) Serial.println(cubeData.valveCycleCount);
         if (cubeData.valveCycleCount >= cubeData.valveNumCycles)
         {
           if (CHATTY_CATHY) Serial.println("Stop Cycling");
